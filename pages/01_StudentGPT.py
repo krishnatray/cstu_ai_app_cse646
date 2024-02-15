@@ -307,7 +307,7 @@ if user_input := st.chat_input("Welcome to CSTU StudentChatGPT! 🤖"):
             
             tool_call = tool_calls[0]
             function_name = tool_call.function.name
-            st.write(function_name)
+            # st.write(function_name)
             # print("function_name: ",function_name)
             
             # function_to_call = available_functions[function_name]

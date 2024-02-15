@@ -75,6 +75,11 @@ If admin user wants to see the registered students for a course, ask for the cou
 If admin user wants to the registered students for all courses, call function get_registration_all without any parameters and display the results.
 If the adming wants to see the registration summary report call function summary_report without any parameters and display the results.
                                                    """} ]
+
+def get_embedding(text, model="text-embedding-3-small"):
+   text = text.replace("\n", " ")
+   return client.embeddings.create(input = [text], model=model).data[0].embedding
+
 # During the coversation, refer to chat history and the information delimited by {delimiter}.
 def chat_complete_messages(messages, temperature=0):
     response = client.chat.completions.create(
@@ -124,7 +129,7 @@ def chat_complete_messages(messages, temperature=0):
         ],
        function_call="auto",
     )
-    return response.choices[0].['message'].['content']
+    return (response.choices[0].message.content, response.choices[0].message.tool_calls)
 
 
 def limit_line_width(text, max_line_width):
@@ -172,13 +177,9 @@ for message in st.session_state.chat_history:
 # Accept user input
 if user_input := st.chat_input("Welcome to CSTU AdminChatGPT! 🤖"):
     if OPENAI_API_KEY:
-        res = client.embeddings.create(
-            input=[user_input],
-            engine=embed_model
-            )
-
-        res = get_embedding( [user_input] )    
-        kb_res = index.query(res, top_k=1, include_metadata=True, namespace='cstu')
+       
+        res = get_embedding("".join([user_input]))  
+        kb_res = index.query(vector=res, top_k=1, include_metadata=True, namespace='cstu')
 
         #If the include_metadata parameter is set to True, the query method will only return the id, score, and metadata for each document. The vector for each document will not be returned
         metadata_text_list = [x['metadata']['text'] for x in kb_res['matches']]
@@ -205,23 +206,24 @@ if user_input := st.chat_input("Welcome to CSTU AdminChatGPT! 🤖"):
         st.session_state.prompt_history.append(user_message)
 
         # Get the model response
-        response = chat_complete_messages(st.session_state.prompt_history, temperature=0)
+        response, tool_calls = chat_complete_messages(st.session_state.prompt_history, temperature=0)
         #response = chat_complete_messages(C, temperature=0)
         # Limit the line width to, for example, 60 characters
         max_line_width = 60
         #x = response
 
-        st.write(response)
-        st.write(type(response))
-        if response.get("function_call"): # e.g. Sending email
-
-            function_name = response["function_call"]["name"]
+        # st.write(response)
+        # st.write(type(response))
+        if tool_calls:
+            
+            tool_call = tool_calls[0]
+            function_name = tool_call.function.name
             # print("function_name: ",function_name)
             
             # function_to_call = available_functions[function_name]
             # print("function_to_call: ", function_to_call)
 
-            function_args = json.loads(response["function_call"]["arguments"])
+            function_args = json.loads(tool_call.function.arguments)
             if function_name == 'get_registration':
                 result = get_registration(function_args.get("course_name")) 
                 formatted_text = f"{result}"
@@ -241,7 +243,7 @@ if user_input := st.chat_input("Welcome to CSTU AdminChatGPT! 🤖"):
         
         else:
             # formatted_text = limit_line_width(response["content"], max_line_width)
-            formatted_text = response["content"]
+            formatted_text = response
 
         ai_message = {"role": "assistant", "content": formatted_text}
         st.session_state.chat_history.append(ai_message)
