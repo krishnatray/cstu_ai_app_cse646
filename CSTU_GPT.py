@@ -17,7 +17,7 @@ st.sidebar.success("Select a site above.")
 credits_text = """
 ## CSE 646, Spring 2024 - AI/GenAI Application
 
-- Project: CSTUGPT [Github](https://github.com/krishnatray/cstuchatgpt_team2)
+- Project: CSTUGPT [Github](https://github.com/krishnatray/cstu_ai_app_cse646.git)
 
 ---------------------
 ## Project Team:
